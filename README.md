@@ -1,2 +1,2 @@
 # t5_turbot
-A tier 5 version of the Greenland turbot assessment for comparative purposes.
+A tier 5 version of the Greenland turbot assessment for comparison purposes.

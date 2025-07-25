@@ -42,8 +42,11 @@ input <- prepare_rema_input(model_name = 'Tier 5 turbot',
                             # shelf as NA
                             q_options = list(pointer_biomass_cpue_strata = c(1, NA, 2)))
 mod1 <- fit_rema(input)
+mod1
 saveRDS(mod1, here::here(yr, "results", "t5_turbot.rds"))
 out <- tidy_rema(mod1)
+out
+
 # create empty placeholder so that strata plot panels are aligned for the
 # BTS/LLS
 out$cpue_by_strata <- out$cpue_by_strata %>% 
@@ -78,3 +81,53 @@ glimpse(specs)
 # OFL = 2598 t
 # maxABC = 2237 t
 # ABC = 2013 t
+
+# Apportionment -----
+
+# Maybe base appo on RPW instead of RPN because its weight-based (that's what is
+# done for other stocks)
+lls <- read_csv(here(yr, "data", "raw", "lls_turbot.csv")) %>% 
+  mutate(strata, year, cpue = rpw, cv = rpw_cv)
+
+sort(unique(bts$strata))
+input <- prepare_rema_input(model_name = 'Turbot Apportionment',
+                            multi_survey = 1, # this is 1 because we want to use the LLS information
+                            biomass_dat = bts, 
+                            cpue_dat = lls,
+                            start_year = 1991,
+                            end_year = yr+1,
+                            sum_cpue_index = 1, # this is 1 because LLS RPN/RPWs are summable 
+                            # specify shared/pooled process error across the 3
+                            # strata (default is c(1,2,3))
+                            PE_options = list(pointer_PE_biomass = c(1, 1, 1)),
+                            # LLS only available in AI and on EBS slope.
+                            # estimate separate q's for these and specify EBS
+                            # shelf as NA
+                            q_options = list(pointer_biomass_cpue_strata = c(1, NA, 2)))
+mod2 <- fit_rema(input)
+mod2
+saveRDS(mod2, here::here(yr, "results", "appo_turbot.rds"))
+out <- tidy_rema(mod2)
+out
+# apportionment:  last 10 years (have to combine EBS Strata)
+out$proportion_biomass_by_strata 
+appo <- out$proportion_biomass_by_strata %>% 
+  mutate(EBS = `EBS Shelf` + `EBS Slope`) %>% 
+  select(-`EBS Shelf`, -`EBS Slope`)
+
+appo  %>% tail(10) # last 10 yr
+# average proportion predicted biomass in the AI over the last 10 yr
+appo  %>% tail(10) %>% summarise(mean(AI)) 
+
+appo %>% 
+  dplyr::filter(year > max(year) - 10) %>% 
+  tidyr::pivot_longer(cols = -c(model_name, year)) %>% 
+  ggplot(aes(x = factor(year), y = value,
+             fill = reorder(name, (value)))) + 
+  geom_bar(position = "stack", stat = "identity") + 
+  scale_fill_brewer(palette = "Greys") + 
+  labs(x = NULL, y = NULL, fill = NULL, title = "Proportion biomass by strata") + 
+  scale_y_continuous(expand = expansion(mult = c(0, 0)))
+
+ggsave(here(yr, "results", "appo_turbot.png"), units = 'in', bg = 'white',
+       height = 4, width = 6, dpi = 300)

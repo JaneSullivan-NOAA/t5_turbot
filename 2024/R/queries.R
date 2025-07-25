@@ -34,6 +34,7 @@ my_ids <- c(99901, # EBS shelf standard grid
             99905  # EBS slope
 )
 
+
 biom <- tbl(akfin, sql("gap_products.akfin_biomass")) %>%
   rename_all(tolower) %>%
   filter(species_code %in% race_spp & area_id %in% my_ids) %>%
